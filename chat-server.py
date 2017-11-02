@@ -70,45 +70,48 @@ def ServerHandler(connection, addr, portNum, s):
             message = data[0:4]
             text = data[5:len(data)]
             ip = socket.gethostbyname(socket.gethostname())
-            print ip
-            print data[0:13]
+            print data[0:14]
 
             ######## join chatroom ####################
             if data[0:13] == "JOIN_CHATROOM":
-                roomProcessed = data.rsplit('\n', 3)[0]
-                roomName = roomProcessed[15:len(roomProcessed)]
+                tags = joinChatRoom(data)
+                print tags
 
-                ipProcessed = data.rsplit('\n', 2)[0]
-                ip = ipProcessed[32:len(ipProcessed)]
-
-                portProcessed = data.rsplit('\n', 1)[0]
-                port = portProcessed[47:len(portProcessed)]
-
-                clientName = data[65:len(data)]
-
-                print roomName
-                print ip
-                print port
-                print clientName
-
-                if roomName not in ROOMS:
-                    tempRoom = ChatRoom(roomName)
-                    ROOMS[roomName] = tempRoom
+                if tags[0] not in ROOMS:
+                    tempRoom = ChatRoom(tags[0])
+                    ROOMS[tags[0]] = tempRoom
                     print ROOMS
 
-                ROOMS[roomName].addClient(connection)
+                ROOMS[tags[0]].addClient(connection)
 
-                response1 = "JOINED_CHATROOM: %s\nCLIENT_IP: %s\nPORT: %s\nCLIENT_NAME: %s" % (
-                roomName, ip, portNum, clientName)
-                print response1
-                connection.sendall(response1)
+                joinResponse = "JOINED_CHATROOM: %s\nCLIENT_IP: %s\nPORT: %s\nCLIENT_NAME: %s" % (
+                tags[0], ip, tags[2], tags[3])
+                print joinResponse
+                connection.sendall(joinResponse)
 
-            # ROOMS[roomName].sendMessage("%s has joined the chat room" % (clientName))
+            # joinMessage = "%s has joined the chat room" % (tags[3])
+            # ROOMS[tags[0]].sendMessage(joinMessage)
+
+            ########### Leave chatroom ####################
+            if data[0:14] == "LEAVE_CHATROOM":
+                tags = leaveChatRoom(data)
+                print tags
+
+                ROOMS[tags[0]].removeClient(connection)
+
+                leaveResponse = "LEFT_CHATROOM: %s\nJOIN_ID: %s" % (tags[0], tags[1])
+                print "here"
+                print leaveResponse
+                connection.sendall(leaveResponse)
+
+            # leaveMessage = "%s has left the chatroom" % (tags[2])
+            # ROOMS[tags[0]].sendMessage(leaveMessage)
 
 
             ########### send message to chatroom ##########
-
-
+            # if data[0:4] == "CHAT":
+            #	tags = sendMessage(data)
+            #	print tags
 
             elif message == "HELO":
                 response = "%sIP:%s\nPort:%d\nStudentID:13328582\n" % (data, ip, portNum)
@@ -136,35 +139,61 @@ def ServerHandler(connection, addr, portNum, s):
 
 # handle message for client joining chat room
 def joinChatRoom(message):
+    tags = []
+
     roomProcessed = message.rsplit('\n', 3)[0]
     roomName = roomProcessed[15:len(roomProcessed)]
+    tags.append(roomName)
 
     ipProcessed = message.rsplit('\n', 2)[0]
     ip = ipProcessed[(len(roomProcessed) + 12):len(ipProcessed)]
+    tags.append(ip)
 
     portProcessed = message.rsplit('\n', 1)[0]
     port = portProcessed[(len(ipProcessed) + 7):len(portProcessed)]
+    tags.append(port)
 
     clientName = message[(len(portProcessed) + 14):len(message)]
+    tags.append(clientName)
+    return tags
 
 
 # handle client sending message to chatroom
 def sendMessage(message):
+    tags = []
+
     roomProcessed = message.rsplit('\n', 5)[0]
     roomName = roomProcessed[6:len(roomProcessed)]
+    tags.append(roomName)
 
     idProcessed = message.rsplit('\n', 4)[0]
-    id = idProcessed[(len(roomProcessed) + 10):len(idProcessed)]
+    clId = idProcessed[(len(roomProcessed) + 10):len(idProcessed)]
+    tags.append(clId)
 
     clNameProcessed = message.rsplit('\n', 3)[0]
     clName = clNameProcessed[(len(idProcessed) + 14):len(clNameProcessed)]
+    tags.append(clName)
 
     clientMessage = message[(len(clNameProcessed) + 10):len(message)]
+    tags.append(clientMessage)
+    return tags
 
 
-def main():
-    start()
+# handle message for client leaving chatroom
+def leaveChatRoom(message):
+    tags = []
 
+    roomProcessed = message.rsplit('\n', 2)[0]
+    roomName = roomProcessed[16:len(roomProcessed)]
+    tags.append(roomName)
+
+    idProcessed = message.rsplit('\n', 1)[0]
+    clId = idProcessed[(len(roomProcessed) + 10):len(idProcessed)]
+    tags.append(clId)
+
+    clientName = message[(len(idProcessed) + 14):len(message)]
+    tags.append(clientName)
+    return tags
 
 if __name__ == '__main__':
-    main()
+    start()
