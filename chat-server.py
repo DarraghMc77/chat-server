@@ -4,9 +4,10 @@ from concurrent.futures import ThreadPoolExecutor
 CONN_QUEUE = 50
 BUFFER_SIZE = 4096
 ROOMS = {}
+ROOMNAMES = {}
 ROOMREFS = []
-ROOMNUM = 1
-CLIENTNUM = 1
+roomnum = 0
+clientnum = 0
 
 
 class ChatRoom:
@@ -67,7 +68,23 @@ def start():
 
 
 def getRoom():
-    return ROOMNUM
+    global roomnum
+    return roomnum
+
+
+def incrementRoom():
+    global roomnum
+    roomnum = roomnum + 1
+
+
+def getClient():
+    global clientnum
+    return clientnum
+
+
+def incrClient():
+    global clientnum
+    clientnum = clientnum + 1
 
 
 def ServerHandler(connection, addr, portNum, s):
@@ -90,21 +107,18 @@ def ServerHandler(connection, addr, portNum, s):
                 print roomnumber
 
                 if tags[0] not in ROOMS:
-                    print "here"
                     tempRoom = ChatRoom(tags[0])
                     ROOMS[tags[0]] = tempRoom
-                    print "here2"
-                    print ROOMREFS
-                    print roomnumber
                     ROOMREFS.append(tags[0])
-                    print "here3"
-                    print ROOMREFS[0]
-                    print ROOMS
+                    ROOMNAMES[tags[0]] = roomnumber
+                    print "here"
+                    incrementRoom()
                 print "here"
 
                 ROOMS[tags[0]].addClient(connection)
-                roomRef = 1
-                joinId = 2
+                roomRef = ROOMNAMES[tags[0]]
+                joinId = getClient()
+                incrClient()
                 joinResponse = "JOINED_CHATROOM: %s\nSERVER_IP: %s\nPORT: %s\nROOM_REF: %s\nJOIN_ID: %d\n" % (
                 tags[0], ip, tags[2], roomRef, joinId)
                 print joinResponse
@@ -119,7 +133,7 @@ def ServerHandler(connection, addr, portNum, s):
             elif data[0:14] == "LEAVE_CHATROOM":
                 tags = requestHandler(data)
                 print tags
-                numba = int(tags[0]) - 1
+                numba = int(tags[0])
                 room = ROOMREFS[numba]
                 print room
                 ROOMS[room].removeClient(connection)
@@ -139,7 +153,19 @@ def ServerHandler(connection, addr, portNum, s):
             elif data[0:4] == "CHAT":
                 tags = requestHandler(data)
                 print tags
-                ROOMS[tags[0]].sendMessage(tags[3])
+                numba = int(tags[0])
+                room = ROOMREFS[numba]
+                print tags
+                chatMessage = "CHAT: %s\nCLIENT_NAME: %s\nMESSAGE: %s\n\n" % (tags[0], tags[2], tags[3])
+                print chatMessage
+                ROOMS[room].sendMessage(chatMessage)
+
+            ########## Disconnect ########################
+            elif data[0:10] == "DISCONNECT":
+                tags = requestHandler(data)
+                for room in ROOMS:
+                    room.removeClient(connection)
+                connection.close()
 
             ########## HELO message ######################
             elif data[0:4] == "HELO":
@@ -235,6 +261,6 @@ def leaveChatRoom(message):
     tags.append(clientName)
     return tags
 
+
 if __name__ == '__main__':
-    print ROOMNUM
     start()
