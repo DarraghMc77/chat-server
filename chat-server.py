@@ -23,18 +23,24 @@ class ChatRoom:
         else:
             print "Client in chat room"
 
-    def removeClient(self, clientSocket):
+    def removeClient(self, clientSocket, roomRef, name):
         print "here3"
         if clientSocket in self.clientList:
             self.clientList.remove(clientSocket)
             print self.clientList
+            leaveMessage = "CHAT: %s\nCLIENT_NAME: %s\nMESSAGE: %s has left this chatroom\n\n" % (roomRef, name, name)
+            print leaveMessage
+            self.sendMessage(leaveMessage)
+            clientSocket.sendall(leaveMessage)
         else:
             print "Client not in room"
 
     def sendMessage(self, message):
+        print "in sendmessage now"
         print self.clientList
         print message
         for person in self.clientList:
+            print person
             print message
             person.sendall(message)
 
@@ -136,17 +142,19 @@ def ServerHandler(connection, addr, portNum, s):
                 numba = int(tags[0])
                 room = ROOMREFS[numba]
                 print room
-                ROOMS[room].removeClient(connection)
+                # ROOMS[room].removeClient(connection, tags[0], tags[2])
                 print "here1"
                 leaveResponse = "LEFT_CHATROOM: %s\nJOIN_ID: %s\n" % (tags[0], tags[1])
                 print "here"
                 print leaveResponse
                 connection.sendall(leaveResponse)
 
+                ROOMS[room].removeClient(connection, tags[0], tags[2])
+
                 leaveMessage = "CHAT: %s\nCLIENT_NAME: %s\nMESSAGE: %s has left this chatroom\n\n" % (
                 tags[0], tags[2], tags[2])
-                ROOMS[room].sendMessage(leaveMessage)
-                connection.sendall(leaveMessage)
+                # ROOMS[room].sendMessage(leaveMessage)
+                # connection.sendall(leaveMessage)
                 print "leave finished"
 
             ########### send message to chatroom ##########
@@ -163,8 +171,14 @@ def ServerHandler(connection, addr, portNum, s):
             ########## Disconnect ########################
             elif data[0:10] == "DISCONNECT":
                 tags = requestHandler(data)
-                for room in ROOMS:
-                    room.removeClient(connection)
+                for key, value in ROOMS.items():
+                    print key
+                    print value
+                    print ROOMNAMES[key]
+                    ROOMS[key].removeClient(connection, ROOMNAMES[key], tags[2])
+                disconnectMessage = "disconnected"
+                # connection.sendall(disconnectMessage)
+                print "disconsend"
                 connection.close()
 
             ########## HELO message ######################
@@ -260,6 +274,7 @@ def leaveChatRoom(message):
     clientName = message[(len(idProcessed) + 13):len(message)]
     tags.append(clientName)
     return tags
+
 
 if __name__ == '__main__':
     start()

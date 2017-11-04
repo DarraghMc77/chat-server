@@ -11,10 +11,12 @@ join = "JOIN_CHATROOM: lads\nCLIENT_IP: 127.0.0.1\nPORT: 8000\nCLIENT_NAME: darr
 leave = "LEAVE_CHATROOM: lads\nJOIN_ID: 13352\nCLIENT_NAME: darragh"
 
 try:
+    ## Test joining chat room
     sck.sendall(join)
     data = sck.recv(4096)
     print data
 
+    ## Test leaving chat room
     sck.sendall(leave)
     data2 = sck.recv(4096)
     print data2
