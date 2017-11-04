@@ -4,6 +4,9 @@ from concurrent.futures import ThreadPoolExecutor
 CONN_QUEUE = 50
 BUFFER_SIZE = 4096
 ROOMS = {}
+ROOMREFS = []
+ROOMNUM = 1
+CLIENTNUM = 1
 
 
 class ChatRoom:
@@ -20,6 +23,7 @@ class ChatRoom:
             print "Client in chat room"
 
     def removeClient(self, clientSocket):
+        print "here3"
         if clientSocket in self.clientList:
             self.clientList.remove(clientSocket)
             print self.clientList
@@ -27,6 +31,8 @@ class ChatRoom:
             print "Client not in room"
 
     def sendMessage(self, message):
+        print self.clientList
+        print message
         for person in self.clientList:
             print message
             person.sendall(message)
@@ -60,11 +66,16 @@ def start():
     s.close()
 
 
+def getRoom():
+    return ROOMNUM
+
+
 def ServerHandler(connection, addr, portNum, s):
     try:
         print 'connection from', addr
 
         while True:
+            print "top of while"
             data = connection.recv(BUFFER_SIZE)
             print 'received "%s"' % data
             text = data[5:len(data)]
@@ -75,37 +86,54 @@ def ServerHandler(connection, addr, portNum, s):
             if data[0:13] == "JOIN_CHATROOM":
                 tags = requestHandler(data)
                 print tags
+                roomnumber = getRoom()
+                print roomnumber
 
                 if tags[0] not in ROOMS:
+                    print "here"
                     tempRoom = ChatRoom(tags[0])
                     ROOMS[tags[0]] = tempRoom
+                    print "here2"
+                    print ROOMREFS
+                    print roomnumber
+                    ROOMREFS.append(tags[0])
+                    print "here3"
+                    print ROOMREFS[0]
                     print ROOMS
+                print "here"
 
                 ROOMS[tags[0]].addClient(connection)
-
-                joinResponse = "JOINED_CHATROOM: %s\nSERVER_IP: %s\nPORT: %s\nCLIENT_NAME: %s" % (
-                tags[0], ip, tags[2], tags[3])
+                roomRef = 1
+                joinId = 2
+                joinResponse = "JOINED_CHATROOM: %s\nSERVER_IP: %s\nPORT: %s\nROOM_REF: %s\nJOIN_ID: %d\n" % (
+                tags[0], ip, tags[2], roomRef, joinId)
                 print joinResponse
                 connection.sendall(joinResponse)
-
-                joinMessage = "%s has joined the chat room" % (tags[3])
+                print "here"
+                joinMessage = "CHAT: %s\nCLIENT_NAME: %s\nMESSAGE: %s has joined this chatroom\n\n" % (
+                roomRef, tags[3], tags[3])
+                print "here2"
                 ROOMS[tags[0]].sendMessage(joinMessage)
 
             ########### Leave chatroom ####################
             elif data[0:14] == "LEAVE_CHATROOM":
                 tags = requestHandler(data)
                 print tags
-
-                ROOMS[tags[0]].removeClient(connection)
-
-                leaveResponse = "LEFT_CHATROOM: %s\nJOIN_ID: %s" % (tags[0], tags[1])
+                numba = int(tags[0]) - 1
+                room = ROOMREFS[numba]
+                print room
+                ROOMS[room].removeClient(connection)
+                print "here1"
+                leaveResponse = "LEFT_CHATROOM: %s\nJOIN_ID: %s\n" % (tags[0], tags[1])
                 print "here"
                 print leaveResponse
                 connection.sendall(leaveResponse)
 
-                leaveMessage = "%s has left the chatroom" % (tags[2])
-                ROOMS[tags[0]].sendMessage(leaveMessage)
-
+                leaveMessage = "CHAT: %s\nCLIENT_NAME: %s\nMESSAGE: %s has left this chatroom\n\n" % (
+                tags[0], tags[2], tags[2])
+                ROOMS[room].sendMessage(leaveMessage)
+                connection.sendall(leaveMessage)
+                print "leave finished"
 
             ########### send message to chatroom ##########
             elif data[0:4] == "CHAT":
@@ -207,10 +235,6 @@ def leaveChatRoom(message):
     tags.append(clientName)
     return tags
 
-
-def main():
-    start()
-
-
 if __name__ == '__main__':
-    main()
+    print ROOMNUM
+    start()
