@@ -261,6 +261,5 @@ def leaveChatRoom(message):
     tags.append(clientName)
     return tags
 
-
 if __name__ == '__main__':
     start()
